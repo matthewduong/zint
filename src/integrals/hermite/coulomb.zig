@@ -123,10 +123,11 @@ pub fn CoulombTable(comptime T: type) type {
             diff: [3]T,
         ) void {
             if (x > 0) {
+                const lower_axis_coefficient = @as(T, @floatFromInt(x - 1));
                 for (0..n_upper_exclusive) |n| {
                     var value = diff[0] * self.values[self.index(n + 1, x - 1, y, z)];
                     if (x >= 2) {
-                        value += @as(T, @floatFromInt(x - 1)) *
+                        value += lower_axis_coefficient *
                             self.values[self.index(n + 1, x - 2, y, z)];
                     }
                     self.values[self.index(n, x, y, z)] = value;
@@ -134,10 +135,11 @@ pub fn CoulombTable(comptime T: type) type {
                 return;
             }
             if (y > 0) {
+                const lower_axis_coefficient = @as(T, @floatFromInt(y - 1));
                 for (0..n_upper_exclusive) |n| {
                     var value = diff[1] * self.values[self.index(n + 1, x, y - 1, z)];
                     if (y >= 2) {
-                        value += @as(T, @floatFromInt(y - 1)) *
+                        value += lower_axis_coefficient *
                             self.values[self.index(n + 1, x, y - 2, z)];
                     }
                     self.values[self.index(n, x, y, z)] = value;
@@ -145,10 +147,11 @@ pub fn CoulombTable(comptime T: type) type {
                 return;
             }
             // z > 0: the s >= 1, x = y = 0 branch.
+            const lower_axis_coefficient = @as(T, @floatFromInt(z - 1));
             for (0..n_upper_exclusive) |n| {
                 var value = diff[2] * self.values[self.index(n + 1, x, y, z - 1)];
                 if (z >= 2) {
-                    value += @as(T, @floatFromInt(z - 1)) *
+                    value += lower_axis_coefficient *
                         self.values[self.index(n + 1, x, y, z - 2)];
                 }
                 self.values[self.index(n, x, y, z)] = value;
