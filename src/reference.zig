@@ -137,6 +137,9 @@ pub const TestCase = struct {
 
 pub const ParsedTestCase = std.json.Parsed(TestCase);
 
+/// Maximum accepted reference JSON size; reaching this limit returns `error.StreamTooLong`.
+pub const max_reference_file_bytes = 64 * 1024 * 1024;
+
 pub const TestCases = struct {
     items: []ParsedTestCase,
 
@@ -173,7 +176,12 @@ pub fn readTestCaseFile(
     allocator: std.mem.Allocator,
     path: []const u8,
 ) !ParsedTestCase {
-    const json_text = try std.Io.Dir.cwd().readFileAlloc(io, path, allocator, .unlimited);
+    const json_text = try std.Io.Dir.cwd().readFileAlloc(
+        io,
+        path,
+        allocator,
+        .limited(max_reference_file_bytes),
+    );
     defer allocator.free(json_text);
     return parseTestCase(allocator, json_text);
 }
@@ -197,7 +205,12 @@ pub fn readTestCasesDir(
         if (entry.kind != .file) continue;
         if (!std.mem.endsWith(u8, entry.name, ".json")) continue;
 
-        const json_text = try dir.readFileAlloc(io, entry.name, allocator, .unlimited);
+        const json_text = try dir.readFileAlloc(
+            io,
+            entry.name,
+            allocator,
+            .limited(max_reference_file_bytes),
+        );
         defer allocator.free(json_text);
 
         const parsed = try parseTestCase(allocator, json_text);

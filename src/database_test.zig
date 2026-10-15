@@ -27,7 +27,7 @@ fn readBasisIndex() !ParsedBasisIndex {
         std.testing.io,
         basis_index_path,
         std.testing.allocator,
-        .unlimited,
+        .limited(basis.max_basis_file_bytes),
     );
     defer std.testing.allocator.free(json_text);
 
@@ -216,8 +216,7 @@ test "basis database index loads supported non-ECP basis files" {
     var it = parsed_index.value.map.iterator();
     while (it.next()) |entry| {
         const file_name = entry.value_ptr.*;
-        const path = try std.fmt.allocPrint(
-            std.testing.allocator,
+        const path = try std.testing.allocator.print(
             "{s}/{s}",
             .{ basis_dir, file_name },
         );
@@ -227,7 +226,7 @@ test "basis database index loads supported non-ECP basis files" {
             std.testing.io,
             path,
             std.testing.allocator,
-            .unlimited,
+            .limited(basis.max_basis_file_bytes),
         );
         defer std.testing.allocator.free(json_text);
 

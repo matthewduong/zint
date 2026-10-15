@@ -47,9 +47,10 @@ pub const max_components_per_shell: usize =
 pub fn Primitive(comptime T: type) type {
     return struct {
         exponent: T,
-        /// Contraction coefficient with the radial part of the
-        /// Cartesian-Gaussian normalization folded in.
-        /// The basis loader does this folding at load time via `radialNormalization`.
+        /// Weight used before component-specific angular normalization.
+        /// For a basis-loaded shell this is the BSE coefficient multiplied by
+        /// the primitive radial factor and the shell's contraction scale.
+        /// Manually constructed shells supply this weight directly.
         coefficient: T,
     };
 }

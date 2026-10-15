@@ -326,7 +326,7 @@ fn sphericalTransformMatrix(
 
     const cartesian_count = gaussian_orbital.cartesianComponentCount(angular_momentum);
     const spherical_count = gaussian_orbital.sphericalComponentCount(angular_momentum);
-    var transform = [_]T{0} ** (cartesian_count * spherical_count);
+    var transform: [cartesian_count * spherical_count]T = @splat(0);
 
     inline for (0..spherical_count) |column_index| {
         const is_negative_m = column_index < angular_momentum;
@@ -364,7 +364,7 @@ fn fillSphericalTransformColumn(
     const cartesian_count = gaussian_orbital.cartesianComponentCount(angular_momentum);
     const spherical_count = gaussian_orbital.sphericalComponentCount(angular_momentum);
 
-    var column = [_]T{0} ** cartesian_count;
+    var column: [cartesian_count]T = @splat(0);
     fillRegularSolidHarmonic(T, angular_momentum, magnetic_m, part, &column);
     normalizeSphericalColumn(T, angular_momentum, &column);
 

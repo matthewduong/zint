@@ -47,7 +47,7 @@ fn readManifest() !ParsedManifest {
         std.testing.io,
         manifest_path,
         std.testing.allocator,
-        .unlimited,
+        .limited(reference.max_reference_file_bytes),
     );
     defer std.testing.allocator.free(json_text);
 
@@ -83,8 +83,7 @@ fn expectUniqueManifestCases(manifest: Manifest) !void {
 
 fn expectAllManifestFixturesExist(manifest: Manifest) !void {
     for (manifest.cases) |manifest_case| {
-        const fixture_path = try std.fmt.allocPrint(
-            std.testing.allocator,
+        const fixture_path = try std.testing.allocator.print(
             "{s}/{s}.json",
             .{ cases_dir, manifest_case.name },
         );
@@ -215,7 +214,7 @@ fn basisPath(allocator: std.mem.Allocator, name: []const u8) ![]u8 {
     while (stem.items.len > 0 and stem.items[0] == '_') _ = stem.orderedRemove(0);
     while (stem.items.len > 0 and stem.items[stem.items.len - 1] == '_') _ = stem.pop();
 
-    return std.fmt.allocPrint(allocator, "data/basis/{s}.json", .{stem.items});
+    return allocator.print("data/basis/{s}.json", .{stem.items});
 }
 
 fn buildNuclei(
@@ -332,8 +331,7 @@ fn expectEriTensor(
 }
 
 fn runReferenceCase(manifest_case: ManifestCase) !void {
-    const fixture_path = try std.fmt.allocPrint(
-        std.testing.allocator,
+    const fixture_path = try std.testing.allocator.print(
         "{s}/{s}.json",
         .{ cases_dir, manifest_case.name },
     );

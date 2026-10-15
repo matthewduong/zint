@@ -23,6 +23,9 @@ pub const ParseError = ConvertBasisError || error{InvalidBasisJson};
 pub const ReadFileError = std.Io.Dir.ReadFileAllocError || ParseError;
 pub const ShellsForAtomError = std.mem.Allocator.Error || error{ ElementNotFound, UnsupportedEcp };
 
+/// Maximum accepted basis JSON size; reaching this limit returns `error.StreamTooLong`.
+pub const max_basis_file_bytes = 64 * 1024 * 1024;
+
 pub fn ContractedShell(comptime T: type) type {
     scalar.assertFloat(T);
 
@@ -163,7 +166,12 @@ pub fn readFile(
     allocator: std.mem.Allocator,
     path: []const u8,
 ) ReadFileError!BasisSet(T) {
-    const json_text = try std.Io.Dir.cwd().readFileAlloc(io, path, allocator, .unlimited);
+    const json_text = try std.Io.Dir.cwd().readFileAlloc(
+        io,
+        path,
+        allocator,
+        .limited(max_basis_file_bytes),
+    );
     defer allocator.free(json_text);
     return parse(T, allocator, json_text);
 }
@@ -273,13 +281,36 @@ fn convertShell(
     exponents: []const reader.JsonFloat,
     coefficients: []const reader.JsonFloat,
 ) ConvertBasisError!ContractedShell(T) {
+    const primitives = try prepareShellPrimitives(
+        T,
+        allocator,
+        angular_momentum,
+        exponents,
+        coefficients,
+    );
+
+    return .{
+        .angular_momentum = angular_momentum,
+        .function_type = function_type,
+        .kind = shellKind(function_type),
+        .primitives = primitives,
+    };
+}
+
+/// Convert BSE coefficients to the weights consumed by the integral kernels.
+/// Each weight includes primitive radial normalization and a shared contraction
+/// scale. The component-specific angular factor is applied in the kernels.
+fn prepareShellPrimitives(
+    comptime T: type,
+    allocator: std.mem.Allocator,
+    angular_momentum: AngularMomentumOrder,
+    exponents: []const reader.JsonFloat,
+    coefficients: []const reader.JsonFloat,
+) ConvertBasisError![]gaussian_orbital.Primitive(T) {
     const GaussianPrimitive = gaussian_orbital.Primitive(T);
     const primitives = try allocator.alloc(GaussianPrimitive, exponents.len);
     errdefer allocator.free(primitives);
 
-    // Fold the radial (α, L)-dependent part of the Cartesian-Gaussian
-    // normalization into the stored coefficient at load time. The
-    // integrals kernel only applies the per-component angular part.
     for (primitives, exponents, coefficients) |*primitive, exponent_f64, coefficient_f64| {
         if (exponent_f64.value <= 0 or !std.math.isFinite(exponent_f64.value)) {
             return error.InvalidBasisShell;
@@ -296,13 +327,7 @@ fn convertShell(
         };
     }
     try normalizeContraction(T, primitives, angular_momentum);
-
-    return .{
-        .angular_momentum = angular_momentum,
-        .function_type = function_type,
-        .kind = shellKind(function_type),
-        .primitives = primitives,
-    };
+    return primitives;
 }
 
 fn normalizeContraction(
@@ -625,8 +650,7 @@ test "parse maps invalid element keys to InvalidBasisJson" {
 
 test "parse rejects shells above the supported angular momentum limit" {
     const unsupported_angular_momentum = gaussian_orbital.max_angular_momentum + 1;
-    const text = try std.fmt.allocPrint(
-        std.testing.allocator,
+    const text = try std.testing.allocator.print(
         \\{{
         \\  "name": "too-large",
         \\  "elements": {{
